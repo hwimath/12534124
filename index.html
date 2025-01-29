@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>함수의 극한</title>
+  <!-- MathJax 로드 -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+  <style>
+    body {
+      background-color: #fff;
+      color: #000;
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .hidden {
+      display: none;
+    }
+    .difficulty-btns button {
+      margin: 5px;
+      padding: 10px;
+      background-color: #000;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    .difficulty-btns button:hover {
+      background-color: #444;
+    }
+    #quiz-container {
+      margin-top: 20px;
+      border: 1px solid #000;
+      padding: 10px;
+    }
+    #energy-bar-container {
+      width: 100%;
+      height: 20px;
+      border: 1px solid #000;
+      margin: 10px 0;
+    }
+    #energy-bar {
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      transition: width 0.2s linear;
+    }
+    .choice-container {
+      margin-top: 10px;
+    }
+    .choice-container input {
+      margin-right: 5px;
+    }
+    #submit-btn, #next-btn {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #000;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    #submit-btn:hover, #next-btn:hover {
+      background-color: #444;
+    }
+    #feedback {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #final-screen {
+      border: 1px solid #000;
+      padding: 20px;
+      text-align: center;
+    }
+    #response {
+      white-space: pre-wrap; /* 성공/오류 메시지 가독성 위해 */
+      margin-top: 10px;
+      text-align: left;
+      border: 1px solid #000;
+      padding: 10px;
+      display: inline-block;
+      width: 80%;
+    }
+  </style>
+</head>
+<body>
+<h1>함수의 극한</h1>
+
+<!-- 이름 입력 화면 -->
+<div id="start-screen">
+  <h2>이름을 입력하세요</h2>
+  <input type="text" id="player-name" placeholder="이름" style="padding:5px;"/>
+  <h2>난이도를 선택하세요</h2>
+  <div class="difficulty-btns">
+    <button onclick="chooseDifficulty('최상')">최상 (20초 / 문제, 20점)</button>
+    <button onclick="chooseDifficulty('상')">상 (30초 / 문제, 15점)</button>
+    <button onclick="chooseDifficulty('중')">중 (40초 / 문제, 13점)</button>
+    <button onclick="chooseDifficulty('하')">하 (시간 제한 없음, 10점)</button>
+  </div>
+</div>
+
+<!-- 퀴즈 화면 -->
+<div id="quiz-container" class="hidden">
+  <div style="text-align:center;">
+    <p id="global-timer">전체 경과 시간: 0초</p>
+    <p id="lives">남은 기회: 3</p>
+    <p id="score-display">점수: 0</p>
+    <div id="energy-bar-container">
+      <div id="energy-bar"></div>
+    </div>
+  </div>
+
+  <div id="question-area"></div>
+  <div class="choice-container" id="choices-area"></div>
+  
+  <button id="submit-btn" onclick="submitAnswer()">제출</button>
+  <button id="next-btn" class="hidden" onclick="nextQuestion()">다음 문제</button>
+  
+  <div id="feedback"></div>
+</div>
+
+<!-- 최종 화면 -->
+<div id="final-screen" class="hidden">
+  <h2>게임 종료</h2>
+  <p id="final-message"></p>
+  <p id="final-score"></p>
+  <p id="final-time"></p>
+  <button onclick="sendScore()">점수전송</button>
+  <div id="response"></div>
+</div>
+
+<script>
+  /************************************************************
+   * 문제 데이터
+   * (문제 설명, 선택지 4개, 정답)
+   * 모든 수식은 \\(...\\) 형태를 사용.
+   ************************************************************/
+  const allProblems = [
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 3} (2x + 1)\\). (단, x는 실수)",
+      choices: ["5","6","7","8"],
+      correct:"7"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 3} (x + 2)\\). (단, x는 실수)",
+      choices: ["3","4","5","6"],
+      correct:"5"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\sqrt{2x + 5}\\). (단, x는 실수)",
+      choices: ["2","3","4","5"],
+      correct:"3"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} (x^2 + 2)\\). (단, x는 실수)",
+      choices: ["1","2","3","4"],
+      correct:"3"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} (x^2 + 3x)\\). (단, x는 실수)",
+      choices: ["3","4","5","6"],
+      correct:"4"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} (x+1)(x^2 - 2)\\). (단, x는 실수)",
+      choices: ["0","2","6","8"],
+      correct:"6"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\dfrac{1}{x}\\). (단, x는 0이 아닌 실수)",
+      choices: ["1/4","1/3","1/2","1"],
+      correct:"1/2"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 4} \\dfrac{x^2}{x - 3}\\). (단, x는 3이 아닌 실수)",
+      choices: ["8","12","16","20"],
+      correct:"16"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to -2} (x + 3)\\). (단, x는 실수)",
+      choices: ["-1","0","1","2"],
+      correct:"1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 3} \\sqrt{4x - 3}\\). (단, 4x-3 \\(\\geq\\) 0 영역에서 접근)",
+      choices: ["2","3","4","5"],
+      correct:"3"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} \\dfrac{1}{x - 1}\\). (단, x \\(\\neq\\) 1)",
+      choices: ["\\(\\infty\\)","\\(-\\infty\\)","0","존재하지 않음"],
+      correct:"\\(\\infty\\)"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\sqrt{5}\\). (상수의 극한)",
+      choices: ["\\(\\sqrt{3}\\)","\\(\\sqrt{5}\\)","\\(\\sqrt{7}\\)","\\(\\sqrt{9}\\)"],
+      correct:"\\(\\sqrt{5}\\)"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 0} \\bigl(-\\dfrac{1}{|x|} + 2\\bigr)\\). (단, x는 0이 아님)",
+      choices: ["\\(\\infty\\)","\\(-\\infty\\)","0","존재하지 않음"],
+      correct:"\\(-\\infty\\)"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to -1} \\dfrac{2x^2 + x - 1}{|x| + 1}\\). (단, x= -1이 아닌 실수)",
+      choices: ["-3","-1","0","2"],
+      correct:"-3"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to \\infty} (-x + 5)\\).",
+      choices: ["\\(\\infty\\)","\\(-\\infty\\)","5","0"],
+      correct:"\\(-\\infty\\)"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to \\infty} \\dfrac{x}{x + 1}\\).",
+      choices: ["0","1","\\(\\infty\\)","존재하지 않음"],
+      correct:"0"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 0} \\dfrac{|x|}{x}\\). (단, x는 0이 아님)",
+      choices: ["1","-1","0","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 0} \\dfrac{x^2}{|x|}\\). (단, x는 0이 아님)",
+      choices: ["\\(\\infty\\)","\\(-\\infty\\)","0","존재하지 않음"],
+      correct:"0"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to -1} \\dfrac{x^2 - 1}{|x + 1|}\\). (단, x \\neq -1)",
+      choices: ["-2","2","0","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to -2} \\dfrac{x^2 - 4}{|x + 2|}\\). (단, x \\neq -2)",
+      choices: ["-4","4","0","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\dfrac{x^2 - 2x}{x - 2}\\). (단, x \\neq 2)",
+      choices: ["0","1","2","존재하지 않음"],
+      correct:"2"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} \\dfrac{x^2 - 2x + 1}{|x - 1|}\\). (단, x \\neq 1)",
+      choices: ["0","1","\\(\\infty\\)","존재하지 않음"],
+      correct:"0"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1+} \\lfloor x \\rfloor\\). ( \\(\\lfloor x \\rfloor\\)은 x보다 크지 않은 최대 정수 )",
+      choices: ["0","1","2","존재하지 않음"],
+      correct:"1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1-} \\lfloor x \\rfloor\\).",
+      choices: ["0","1","2","존재하지 않음"],
+      correct:"0"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} \\lfloor x \\rfloor\\).",
+      choices: ["0","1","2","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2+} \\lfloor x \\rfloor\\).",
+      choices: ["1","2","3","존재하지 않음"],
+      correct:"2"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2-} \\lfloor x \\rfloor\\).",
+      choices: ["1","2","3","존재하지 않음"],
+      correct:"1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\lfloor x \\rfloor\\).",
+      choices: ["1","2","3","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 5+} \\bigl(3 - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["-2","-1","0","1"],
+      correct:"-2"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 6-} \\bigl(3 - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["-3","-2","-1","0"],
+      correct:"-1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 6} \\bigl(3 - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["-3","-2","존재하지 않음","0"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1+} \\bigl(x - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["0","0.5","1","존재하지 않음"],
+      correct:"0"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1-} \\bigl(x - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["0","0.5","1","존재하지 않음"],
+      correct:"1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} \\bigl(x - \\lfloor x \\rfloor\\bigr)\\).",
+      choices: ["0","0.5","1","존재하지 않음"],
+      correct:"존재하지 않음"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2+} \\dfrac{\\lfloor x \\rfloor}{x}\\).",
+      choices: ["0.5","1","1.5","2"],
+      correct:"1"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2-} \\dfrac{\\lfloor x \\rfloor}{x}\\).",
+      choices: ["0.5","1","1.5","2"],
+      correct:"0.5"
+    },
+    {
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\dfrac{\\lfloor x \\rfloor}{x}\\).",
+      choices: ["0.5","1","1.5","존재하지 않음"],
+      correct:"존재하지 않음"
+    }
+  ];
+
+  /************************************************************
+   * 전역 변수
+   ************************************************************/
+  let playerName = "";
+  let difficulty = "";
+  let questionTime = 0;  // 난이도별 문제 시간
+  let scorePerCorrect = 0;
+
+  let problems = [];           // 섞인 문제 목록(한 번 전부 소진 후 다시 재섞어 사용)
+  let currentProblemIndex = 0; // 현재 문제 인덱스
+  let score = 0;               // 현재 점수
+  let lives = 3;               // 남은 기회 (3번 틀리면 종료)
+  let globalTime = 0;          // 전체 경과 시간(초)
+  
+  let timerInterval = null;         // 전체 타이머
+  let questionInterval = null;      // 문제별 타이머
+  let timeLeftForQuestion = 0;      // 현재 문제의 남은 시간
+  let isQuestionAnswered = false;   // 현재 문제에 대한 답안을 제출했는지 여부
+
+  /************************************************************
+   * 유틸: 배열 섞기
+   ************************************************************/
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  /************************************************************
+   * 난이도 선택
+   ************************************************************/
+  function chooseDifficulty(diff) {
+    const nameInput = document.getElementById("player-name");
+    if(!nameInput.value.trim()) {
+      alert("이름을 입력해주세요!");
+      return;
+    }
+    playerName = nameInput.value.trim();
+    difficulty = diff;
+
+    switch(difficulty) {
+      case "최상":
+        questionTime = 20; 
+        scorePerCorrect = 20;
+        break;
+      case "상":
+        questionTime = 30;
+        scorePerCorrect = 15;
+        break;
+      case "중":
+        questionTime = 40;
+        scorePerCorrect = 13;
+        break;
+      case "하":
+        questionTime = 0;  // 무제한
+        scorePerCorrect = 10;
+        break;
+    }
+
+    document.getElementById("start-screen").classList.add("hidden");
+    document.getElementById("quiz-container").classList.remove("hidden");
+
+    // 전체 타이머 시작
+    startGlobalTimer();
+
+    // 문제 리스트를 섞어서 세팅
+    problems = shuffleArray([...allProblems]);
+    currentProblemIndex = 0;
+    lives = 3;
+    score = 0;
+
+    document.getElementById("score-display").innerText = "점수: " + score;
+    document.getElementById("lives").innerText = "남은 기회: " + lives;
+
+    showQuestion();
+  }
+
+  /************************************************************
+   * 전체 시간 측정(무한정 흐름)
+   ************************************************************/
+  function startGlobalTimer() {
+    if(timerInterval) {
+      clearInterval(timerInterval);
+    }
+    globalTime = 0;
+    timerInterval = setInterval(() => {
+      globalTime++;
+      document.getElementById("global-timer").innerText = "전체 경과 시간: " + globalTime + "초";
+    }, 1000);
+  }
+
+  /************************************************************
+   * 문제 표시
+   ************************************************************/
+  function showQuestion() {
+    // 문제 인덱스 넘어가면(모든 문제 소진) => 다시 섞고 0으로
+    if(currentProblemIndex >= problems.length) {
+      problems = shuffleArray([...allProblems]);
+      currentProblemIndex = 0;
+    }
+    const problem = problems[currentProblemIndex];
+    isQuestionAnswered = false;
+    document.getElementById("feedback").innerText = "";
+    
+    // 에너지바 초기화
+    document.getElementById("energy-bar").style.width = "100%";
+
+    // 문제, 보기 표시
+    const qArea = document.getElementById("question-area");
+    qArea.innerHTML = "<p>" + problem.question + "</p>";
+    
+    // 보기 셔플
+    const shuffledChoices = shuffleArray([...problem.choices]);
+    const choicesArea = document.getElementById("choices-area");
+    choicesArea.innerHTML = "";
+    shuffledChoices.forEach((choiceText, idx)=>{
+      const label = ["①","②","③","④"][idx]; 
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <label>
+          <input type="radio" name="choice" value="${choiceText}">
+          ${label} ${choiceText}
+        </label>`;
+      choicesArea.appendChild(div);
+    });
+    
+    // 제출/다음 버튼 상태
+    document.getElementById("submit-btn").classList.remove("hidden");
+    document.getElementById("next-btn").classList.add("hidden");
+
+    // 수식 렌더링
+    MathJax.typeset();
+
+    // 문제별 타이머
+    if(questionInterval) clearInterval(questionInterval);
+
+    if(difficulty !== "하") {
+      timeLeftForQuestion = questionTime;
+      questionInterval = setInterval(()=>{
+        timeLeftForQuestion--;
+        updateEnergyBar();
+        if(timeLeftForQuestion <= 0) {
+          clearInterval(questionInterval);
+          // 시간 초과 => 오답 처리
+          handleWrongAnswer(true);
+        }
+      },1000);
+    } else {
+      // 하 난이도는 시간 무제한
+      document.getElementById("energy-bar").style.width = "0%"; // 시간 막대는 의미 없으니 0%로
+    }
+  }
+
+  /************************************************************
+   * 에너지바 갱신
+   ************************************************************/
+  function updateEnergyBar() {
+    const percent = (timeLeftForQuestion / questionTime) * 100;
+    document.getElementById("energy-bar").style.width = percent + "%";
+  }
+
+  /************************************************************
+   * 제출 버튼 동작
+   ************************************************************/
+  function submitAnswer() {
+    if(isQuestionAnswered) return; // 이미 제출했으면 무시
+
+    // 라디오 체크 확인
+    const selected = document.querySelector("input[name='choice']:checked");
+    if(!selected) {
+      alert("보기 중 하나를 선택하세요!");
+      return;
+    }
+    
+    const userAnswer = selected.value;
+    checkAnswer(userAnswer);
+  }
+
+  /************************************************************
+   * 정답 확인
+   ************************************************************/
+  function checkAnswer(userAnswer) {
+    clearInterval(questionInterval);
+    isQuestionAnswered = true;
+
+    const problem = problems[currentProblemIndex];
+    if(userAnswer === problem.correct) {
+      // 정답
+      score += scorePerCorrect;
+      document.getElementById("score-display").innerText = "점수: " + score;
+      document.getElementById("feedback").innerText = "정답입니다!";
+    } else {
+      // 오답
+      handleWrongAnswer(false);
+      return;
+    }
+    
+    // 다음 문제 버튼 노출
+    document.getElementById("submit-btn").classList.add("hidden");
+    document.getElementById("next-btn").classList.remove("hidden");
+  }
+
+  /************************************************************
+   * 오답 처리 (시간초과 포함)
+   ************************************************************/
+  function handleWrongAnswer(timeOver=false) {
+    const problem = problems[currentProblemIndex];
+    const fb = document.getElementById("feedback");
+    
+    if(timeOver) {
+      fb.innerText = "시간이 초과되었습니다! 정답: " + problem.correct;
+    } else {
+      fb.innerText = "오답입니다! 정답: " + problem.correct;
+    }
+    lives--;
+    document.getElementById("lives").innerText = "남은 기회: " + lives;
+
+    if(lives <= 0) {
+      // 게임 종료
+      endGame();
+      return;
+    }
+
+    // 제출 막고 다음 버튼
+    document.getElementById("submit-btn").classList.add("hidden");
+    document.getElementById("next-btn").classList.remove("hidden");
+  }
+
+  /************************************************************
+   * 다음 문제 버튼
+   ************************************************************/
+  function nextQuestion() {
+    currentProblemIndex++;
+    showQuestion();
+  }
+
+  /************************************************************
+   * 게임 종료
+   ************************************************************/
+  function endGame() {
+    // 타이머 정리
+    if(timerInterval) clearInterval(timerInterval);
+    if(questionInterval) clearInterval(questionInterval);
+
+    // 퀴즈 화면 숨기고 최종 화면 표시
+    document.getElementById("quiz-container").classList.add("hidden");
+    const final = document.getElementById("final-screen");
+    final.classList.remove("hidden");
+
+    const finalMsg = (lives<=0) 
+      ? "3회 이상 틀려서 게임이 종료되었습니다." 
+      : "문제를 모두 푼 뒤 게임을 종료하였습니다.";
+    document.getElementById("final-message").innerText = finalMsg;
+    document.getElementById("final-score").innerText = "최종 점수: " + score;
+    document.getElementById("final-time").innerText = "전체 소요 시간: " + globalTime + "초";
+  }
+
+  /************************************************************
+   * 점수 전송
+   * (문제에서 제시한 함수 saveData 활용)
+   ************************************************************/
+  function sendScore() {
+    saveData("함수의 극한", playerName, score, globalTime);
+  }
+
+  async function saveData(game, name, score, elapsedTime) {
+    const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+
+    const requestData = {
+      game,
+      name,
+      score: parseInt(score, 10),
+      elapsedTime: parseInt(elapsedTime, 10)
+    };
+
+    try {
+      const response = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const responseData = await response.json();
+
+      if (response.ok) {
+        document.getElementById('response').innerText =
+          `성공: ${JSON.stringify(responseData, null, 2)}`;
+      } else {
+        document.getElementById('response').innerText =
+          `오류: ${JSON.stringify(responseData, null, 2)}`;
+      }
+    } catch (error) {
+      console.error('요청 실패:', error);
+      document.getElementById('response').innerText =
+        `네트워크 오류: ${error.message}`;
+    }
+  }
+</script>
+</body>
+</html>
