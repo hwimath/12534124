@@ -73,7 +73,7 @@
       text-align: center;
     }
     #response {
-      white-space: pre-wrap; /* 성공/오류 메시지 가독성 위해 */
+      white-space: pre-wrap;
       margin-top: 10px;
       text-align: left;
       border: 1px solid #000;
@@ -186,11 +186,7 @@
       choices: ["2","3","4","5"],
       correct:"3"
     },
-    {
-      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1} \\dfrac{1}{x - 1}\\). (단, x \\(\\neq\\) 1)",
-      choices: ["\\(\\infty\\)","\\(-\\infty\\)","0","존재하지 않음"],
-      correct:"\\(\\infty\\)"
-    },
+    // --- 삭제된 문제 (limₓ→1 1/(x-1)) ---
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 2} \\sqrt{5}\\). (상수의 극한)",
       choices: ["\\(\\sqrt{3}\\)","\\(\\sqrt{5}\\)","\\(\\sqrt{7}\\)","\\(\\sqrt{9}\\)"],
@@ -201,11 +197,7 @@
       choices: ["\\(\\infty\\)","\\(-\\infty\\)","0","존재하지 않음"],
       correct:"\\(-\\infty\\)"
     },
-    {
-      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to -1} \\dfrac{2x^2 + x - 1}{|x| + 1}\\). (단, x= -1이 아닌 실수)",
-      choices: ["-3","-1","0","2"],
-      correct:"-3"
-    },
+    // --- 삭제된 문제 (limₓ→-1 (2x²+x-1)/(|x|+1)) ---
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to \\infty} (-x + 5)\\).",
       choices: ["\\(\\infty\\)","\\(-\\infty\\)","5","0"],
@@ -214,7 +206,7 @@
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to \\infty} \\dfrac{x}{x + 1}\\).",
       choices: ["0","1","\\(\\infty\\)","존재하지 않음"],
-      correct:"0"
+      correct:"1"
     },
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 0} \\dfrac{|x|}{x}\\). (단, x는 0이 아님)",
@@ -247,7 +239,7 @@
       correct:"0"
     },
     {
-      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1+} \\lfloor x \\rfloor\\). ( \\(\\lfloor x \\rfloor\\)은 x보다 크지 않은 최대 정수 )",
+      question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 1+} \\lfloor x \\rfloor\\). (\\(\\lfloor x \\rfloor\\)은 x보다 크지 않은 최대 정수)",
       choices: ["0","1","2","존재하지 않음"],
       correct:"1"
     },
@@ -284,7 +276,7 @@
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 6-} \\bigl(3 - \\lfloor x \\rfloor\\bigr)\\).",
       choices: ["-3","-2","-1","0"],
-      correct:"-1"
+      correct:"-2"
     },
     {
       question: "아래 극한값을 구하시오: \\(\\lim_{x \\to 6} \\bigl(3 - \\lfloor x \\rfloor\\bigr)\\).",
@@ -522,7 +514,7 @@
       return;
     }
     
-    // 다음 문제 버튼 노출
+    // 다음 문제 버튼 노출 (제출 후 정답이 확인된 상태에서만 작동)
     document.getElementById("submit-btn").classList.add("hidden");
     document.getElementById("next-btn").classList.remove("hidden");
   }
@@ -548,7 +540,7 @@
       return;
     }
 
-    // 제출 막고 다음 버튼
+    // 제출 막고 다음 버튼 노출 (정답/오답 확인 후에만 다음 문제 버튼이 작동)
     document.getElementById("submit-btn").classList.add("hidden");
     document.getElementById("next-btn").classList.remove("hidden");
   }
